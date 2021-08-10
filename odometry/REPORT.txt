@@ -1,0 +1,256 @@
+------------------------------------------------------------------------------
+PROJECT INFORMATION
+------------------------------------------------------------------------------
+
+NAME:				Marco
+SURNAME:			Bocchetti
+
+VIDEO DEMO:	https://www.youtube.com/watch?v=YMipSGL2C3M
+
+------------------------------------------------------------------------------
+0. INDEX
+------------------------------------------------------------------------------
+
+1. 	ARCHIVE CONTENTS
+
+2. 	FILE DESCRIPTIONS
+
+3. 	HOW TO LAUNCH
+
+4. 	TOPICS
+
+5.	STATIC PARAMETERS
+
+6.	DYNAMIC RECONFIGURATION
+
+7. 	TF TREE
+
+8. 	CUSTOM MESSAGE
+
+9. 	SERVICES
+
+10.	CALIBRATION
+
+
+------------------------------------------------------------------------------
+1. ARCHIVE CONTENTS
+------------------------------------------------------------------------------
+
+/src
+|
+|--	robot_tracker
+	|
+	|-- CMakeLists.txt
+	|
+	|-- package.xml
+	|
+	|-- cfg
+		|
+		|-- parameters.cfg
+	|
+	|-- launch
+		|
+		|-- default.launch
+	|
+	|-- msg
+		|
+		|-- CustomMessage.msg
+	|
+	|-- src
+		|
+		|-- main.cpp
+		|
+		|-- SimpleRobot.h
+	|
+	|-- srv
+		|
+		|-- ResetPose.srv
+		|
+		|-- SetPose.srv
+|
+|--	robotics_hw1
+	|
+	|-- ...
+
+
+------------------------------------------------------------------------------
+2. FILE DESCRIPTIONS
+------------------------------------------------------------------------------
+
+default.launch
+--------------
+Launches the ROS node with initial pose (0, 0, 0).
+
+
+main.cpp
+--------
+Defines the entry point for the robot_tracker node and defines the 
+ROS_Interface class.
+
+The ROS_Interface is responsible for all communications between ROS and the 
+robot class. This effectively hides the details of ROS from the model of the 
+robot and allows for easier modifications and extensions to the project. 
+From the point of view of the robot class, it is as if ROS does not exist.
+
+More specifically, the ROS_Interface holds the handler to the node, the 
+handlers to the publishers, to the subscribers, to the services, and to 
+the parameter server. It also defines all the (static) callbacks to be 
+called by ROS.
+
+
+SimpleRobot.h
+-------------
+Defines the SimpleRobot class, which corresponds to a robot which is capable 
+only of moving forward and turning around on the spot. The SimpleRobot class 
+keeps track of the current robot pose and velocities (forward and angular), 
+and is responsible for integrating the velocities with the specified 
+integration method (Euler or RK).
+
+
+CustomMessage.msg
+--------------
+Definition for the message containing the odometry and the integration
+method.
+
+
+ResetPose.srv
+--------------
+Definition for service that resets the pose to (0, 0, 0).
+
+
+SetPose.srv
+--------------
+Definition for service that sets the pose to a given (x, y, theta).
+
+
+------------------------------------------------------------------------------
+3. HOW TO LAUNCH
+------------------------------------------------------------------------------
+
+To start the node, use the launch file with the command:
+
+:	roslaunch robot_tracker default.launch
+
+The launch file also specifies the initial pose of the robot. By default, the 
+initial pose is (0, 0, 0). 
+
+The node expects the motor speed messages on the topics:
+
+	/motor_speed_fl
+	/motor_speed_fr
+	/motor_speed_rr
+	/motor_speed_rl
+
+
+------------------------------------------------------------------------------
+4. TOPICS
+------------------------------------------------------------------------------
+
+/estim_odom [nav_msgs/Odometry]
+-------------------------------
+This is where the estimated odometry is published. 
+
+
+/estim_twist [geometry_msgs/TwistStamped]
+-----------------------------------------
+This is where the estimated twist is published (with header). 
+
+
+/custom_message [robot_tracker/CustomMessage]
+---------------------------------------------
+This is where the custom message (odometry + integration method) is published.
+
+
+------------------------------------------------------------------------------
+5. STATIC PARAMETERS
+------------------------------------------------------------------------------
+
+/initial_x [double]
+
+/initial_y [double]
+
+/initial_theta [double]
+
+Set the initial pose of the robot (x, y, theta coordinates).
+The robot always starts from zero velocities (forward and angular).
+
+
+------------------------------------------------------------------------------
+6. DYNAMIC RECONFIGURATION
+------------------------------------------------------------------------------
+
+method [enum]
+-------------
+Can be: "Euler" (0), "RungeKutta" (1)
+Changes the integration method used by the odometry estimator. 
+
+To reconfigure, you can use the command:
+
+:	rosrun rqt_reconfigure rqt_reconfigure
+
+
+------------------------------------------------------------------------------
+7. TF TREE
+------------------------------------------------------------------------------
+
+odom
+|
+|-- base_link
+
+[Broadcaster: /robot_tracker]
+
+
+------------------------------------------------------------------------------
+8. CUSTOM MESSAGE
+------------------------------------------------------------------------------
+
+nav_msgs/Odometry odom
+std_msgs/String method
+
+(method is set to either "euler" or "rk")
+
+
+------------------------------------------------------------------------------
+9. SERVICES
+------------------------------------------------------------------------------
+
+/reset_pose
+-----------
+Resets the pose of the robot to (0, 0, 0). The velocities (forward and angular)
+of the robot are not modified.
+
+EXAMPLE:
+:	rosservice call /reset_pose
+
+
+/set_pose
+---------
+Sets the pose of the robot to some (x, y, theta_radians). The velocities 
+(forward and angular) of the robot are not modified.
+
+EXAMPLE:
+:	rosservice call /set_pose 5 10 2
+
+
+------------------------------------------------------------------------------
+10. CALIBRATION
+------------------------------------------------------------------------------
+The gear ratio and apparent baseline were estimated empirically by adjusting
+their values until the estimated odometry followed (on rviz) the odometry 
+provided by the manufacturer. 
+
+More specifically, we first estimated the gear ratio when the robot moved 
+approximately linearly, since the apparent baseline does not contribute to
+linear motion. Successively, we estimated the apparent baseline to provide
+acceptable odometry when turning on the spot. This strategy enabled us to
+quickly calibrate the robot visually.
+
+The values are approximately 1:37 for gear ratio and 1.08 for apparent
+baseline.
+
+Further tests with the ground truth odometry showed that the calibration 
+provided acceptable results. Nonetheless, we expect that the estimated 
+odometry diverge after some time due to approximate modelling, inaccurate 
+sensor data and integration errors. Implementing a proper sensor fusion 
+algorithm (e.g. Kalman filter) should be able to solve this.
+

@@ -1,0 +1,9 @@
+<launch>
+
+ <param name="initial_x" value="0.0" type="double" />
+ <param name="initial_y" value="0.0" type="double" />
+ <param name="initial_theta" value="0.0" />
+ 
+ <node pkg="robot_tracker" type="robot_tracker" name="robot_tracker" output="screen"/>
+
+</launch>
