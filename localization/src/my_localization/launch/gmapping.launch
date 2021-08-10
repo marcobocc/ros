@@ -1,0 +1,17 @@
+<launch>
+  <arg name="odom_frame_id"   default="odom"/>
+  <arg name="global_frame_id" default="map"/>
+
+  <param name="/use_sim_time" value="true"/>
+  
+  
+  <!-- Calibrated transform between laser scan and base_link -->
+  <node pkg="tf" type="static_transform_publisher" name="tf_publisher_laser" args="0 0 0 0 0 1 1 base_link laser 100"/>
+  
+  <!-- Visualisation -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find my_localization)/rviz/gmapping_visualizer.rviz"/>
+
+  <!-- Gmapping -->
+  <include file="$(find my_localization)/launch/gmapping.launch.xml"/>
+</launch>
+

@@ -1,0 +1,211 @@
+------------------------------------------------------------------------------
+PROJECT INFORMATION
+------------------------------------------------------------------------------
+
+NOME:			MARCO
+COGNOME:		BOCCHETTI
+
+VIDEO DEMO:	https://www.youtube.com/watch?v=x2ACpc7w3-s
+
+------------------------------------------------------------------------------
+0. INDEX
+------------------------------------------------------------------------------
+
+1. 	ARCHIVE CONTENTS
+
+2. 	FILE DESCRIPTIONS
+
+3. 	HOW TO LAUNCH
+
+4. 	CALIBRATION
+
+5.	GMAPPING
+
+6.	LOCALIZATION WITH AMCL
+
+7. 	INITIAL POSE AND COVARIANCES
+
+
+------------------------------------------------------------------------------
+1. ARCHIVE CONTENTS
+------------------------------------------------------------------------------
+
+/src
+|
+|--	my_localization
+	|
+	|-- CMakeLists.txt
+	|
+	|-- package.xml
+	|
+	|-- launch
+		|
+		|-- amcl.launch.xml
+		|
+		|-- gmapping.launch.xml
+		|
+		|-- gmapping.launch
+		|
+		|-- localization.launch
+	|
+	|-- maps
+		|
+		|-- map.pgm
+		|
+		|-- map.yaml
+		|
+		|-- map.jpg
+	|
+	|-- rviz
+		|
+		|-- gmapping_visualizer.rviz
+		|
+		|-- localization_visualizer.rviz
+		
+		
+------------------------------------------------------------------------------
+2. FILE DESCRIPTIONS
+------------------------------------------------------------------------------
+
+gmapping.launch
+---------------
+Launches gmapping and the rviz window with the gmapping_visualizer.rviz config. 
+The bag should be started after launching this .launch file.
+
+localization.launch
+---------------
+Launches gmapping and the rviz window with the localization_visualizer.rviz 
+config. The bag should be started after launching this .launch file.
+
+map.jpg
+-------
+Map generated on bag 3. The .jpg file is only for quick visualization 
+purposes. The code actually uses the .pgm map.
+
+map.pgm
+-------
+Map generated on bag 3. The code uses this file and not the .jpg one.
+
+
+--------------------------------------------------------------------------------
+3. HOW TO LAUNCH
+--------------------------------------------------------------------------------
+DISCLAIMER: Project was developed and tested on the ORIGINAL bags (not the 
+remapped ones).
+
+	3.1. RUNNING GMAPPING
+	----------------------------------------------------------------------------
+	For mapping, first run:
+
+	:	roslaunch my_localization gmapping.launch
+
+	Then launch the desired bag.
+
+
+	3.2. RUNNING LOCALIZATION
+	----------------------------------------------------------------------------
+	For localization, first run:
+
+	:	roslaunch my_localization localization.launch
+
+	Then launch the desired bag.
+	
+	WARNINGS: The warnings during localization (missing transform between
+	camera_pose_frame and base_link at current time) is likely due to a mismatch
+	between the frequency of the various measurements. In any case it was 
+	observed to not have a negative impact on the localization, and everything
+	should be working properly.
+	
+
+--------------------------------------------------------------------------------
+4. CALIBRATION
+--------------------------------------------------------------------------------
+The missing transform between base_link and laser was found experimentally
+by manually tweaking the transform until an acceptable tf was found. The 
+appropriate transform was found to be a 90° rotation about the vertical axis.
+This transform was used for both gmapping and localization.
+
+
+--------------------------------------------------------------------------------
+5. GMAPPING
+--------------------------------------------------------------------------------
+The map was generated on the 3rd bag, because it seemed to explore the map
+more thoroughly and thus could generate more precise maps.
+
+The gmapping parameters were tweaked until an acceptable map was found.
+In particular, we noticed that the quality of the map could be slightly improved
+by reducing the parameters concerning the laser range below the true laser range.
+The motivations for this choice were:
+
+	1. We saw that the laser scan kept picking up strange noise in the distance,
+	even though it was clear from the laser scan that there was a wall/obstacle 
+	inbetween (bottom part of the map). One possible guess is that the laser was 
+	hitting semi-opaque walls/windows/doors. Reducing the laser range meant less 
+	noise in the distance.
+	
+	2. We noticed that the robot explored the room quite close to the walls and 
+	obstacles, thus lowering a bit the laser range had no effect on the actual 
+	quality of the interior of the room.
+
+
+--------------------------------------------------------------------------------
+6. LOCALIZATION WITH AMCL
+--------------------------------------------------------------------------------
+Sensor fusion is performed both on the odom frame and on the map frame. On the 
+odom frame, we fuse the manufacturer's odometry with the camera's odometry. On 
+the map frame, we fuse the AMCL pose with the manufacturer's odometry and the
+camera's odometry.
+
+More specifically, on the map frame the measurements are fused in the following
+way:
+
+	The AMCL pose provides absolute (x, y, theta) positions.
+	
+	The manufacturer's odometry provides (x, y) velocities. The theta velocity
+	was ignored because we noticed experimentally that better localization could 
+	be achieved by using the camera's odometry for the angular velocity. On the
+	other hand, the linear velocities were quite accurate.
+	
+	The camera's odometry provides the angular (theta) velocity. We noticed that
+	the camera's odometry provided quite good angular measurements even though 
+	its (x, y) positions and velocities were almost always very off. This is why 
+	we choose to ignore the (x, y) positions and velocities of the camera's 
+	odometry and just fuse in the theta velocity.
+	
+The IMU was ignored because it did not provide significant improvements ontop the
+proposed configuration, and if it replaced any of the two sensors (with any
+combination of sensors configurations) the localization was always worse. So, 
+the additional overhead of having an IMU was definitely not worth it and good 
+results were achieved with just the proposed configuration, with just a few
+robot movements.
+
+On the odom frame, the configuration follows the same ideas with the exception
+that there is no AMCL absolute position. The absolute position is instead
+supplied by the manufacturer's odometry measurements. 
+
+
+--------------------------------------------------------------------------------
+7. INITIAL POSE AND COVARIANCES
+--------------------------------------------------------------------------------
+
+We noticed that the robot started pretty much in the same location in all bags,
+but its initial rotation could change significantly from bag to bag.
+
+The covariances for both initial (x, y, theta) were increased to 0.5 to reflect
+this observation. This allowed the filter to trust less the initial estimate
+and trust the measurements more, allowing for a faster and more accurate 
+convergence.
+
+However, from our sensor configuration, until the robot starts moving (and 
+especially until it starts rotating), the robot is unable to align the map 
+properly. This can be seen in the video demo (minute 0:54 and 1:57, link at the 
+beginning of this .txt file), where the map is misaligned during localization in 
+the very first seconds. Then, when the robot starts moving, the map aligns quite 
+fast to the laser scan.
+
+Note that even though the initial (x, y) covariances are also set to 0.5, they 
+are able to quickly converge to the true (x, y) because the initial estimate is 
+actually already very close the to true (x, y), so we are just underestimating 
+our initial precision. The most troublesome estimate is the rotation, and
+avoiding overestimating our precision for rotation is key to a fast and accurate
+convergence.
